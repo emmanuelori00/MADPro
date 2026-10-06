@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -31,7 +32,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Digital Pet', ),
+      home: const MyHomePage(title: 'Digital Pet'),
     );
   }
 }
@@ -55,23 +56,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  String petName= 'Buddy';
-  int happiness= 50;
-  int hunger= 50;
-  String outcome= 'playing';
+  String petName = 'Buddy';
+  int happiness = 50;
+  int hunger = 50;
+  String outcome = 'playing';
   Timer? _hungerTimer;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  Timer? _winTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -110,67 +100,115 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: .center,
           children: [
+            Text('$petName\nHappiness: $happiness\nHunger: $hunger'),
             Text(
-              '$petName\nHappiness: $happiness\nHunger: $hunger'
+              outcome == 'won'
+                  ? 'You won!'
+                  : outcome == 'lost'
+                  ? 'Game over'
+                  : 'Keep caring for your pet',
             ),
-            ElevatedButton(onPressed: feed, 
-            child: const Text('Feed')),
-            ElevatedButton(onPressed: play, 
-            child: const Text('Play')),
-            ElevatedButton(onPressed: reset,
-            child: const Text('Reset')),
+            ElevatedButton(
+              onPressed: outcome == 'playing' ? feed : null,
+              child: const Text('Feed'),
+            ),
+            ElevatedButton(
+              onPressed: outcome == 'playing' ? play : null,
+              child: const Text('Play'),
+            ),
+            ElevatedButton(onPressed: reset, child: const Text('Reset')),
           ],
         ),
       ),
     );
   }
+
   void feed() {
     if (outcome != 'playing') return;
-    setState((){
-      hunger = (hunger -10).clamp(0, 100).toInt();
-      happiness= (happiness + (hunger < 30 ? -20 : 10))
-      .clamp (0, 100).toInt();
+    setState(() {
+      hunger = (hunger - 10).clamp(0, 100).toInt();
+      happiness = (happiness + (hunger < 30 ? -20 : 10)).clamp(0, 100).toInt();
+      _checkOutcome();
     });
   }
-  void play(){
+
+  void play() {
     if (outcome != 'playing') return;
-    setState((){
-      happiness= (happiness + 10).clamp(0, 100).toInt();
-      hunger= (hunger + 10).clamp(0, 100).toInt();
+    setState(() {
+      happiness = (happiness + 10).clamp(0, 100).toInt();
+      hunger = (hunger + 10).clamp(0, 100).toInt();
+      _checkOutcome();
     });
   }
+
+  // Called inside each action/tick's state update so related changes rebuild together.
+  void _checkOutcome() {
+    if (outcome != 'playing') return;
+    if (hunger == 100 && happiness <= 10) {
+      outcome = 'lost';
+      _cancelTimers();
+      return;
+    }
+    if (happiness <= 80) {
+      _winTimer?.cancel();
+      _winTimer = null;
+      return;
+    }
+    // Do not restart an existing countdown while happiness stays above 80.
+    _winTimer ??= Timer(const Duration(minutes: 3), () {
+      _winTimer = null;
+      if (!mounted || outcome != 'playing' || happiness <= 80) return;
+      setState(() {
+        outcome = 'won';
+        _cancelTimers();
+      });
+    });
+  }
+
+  void _cancelTimers() {
+    _hungerTimer?.cancel();
+    _hungerTimer = null;
+    _winTimer?.cancel();
+    _winTimer = null;
+  }
+
   void reset() {
-  setState(() {
-    happiness = 50;
-    hunger = 50;
-    outcome = 'playing';
-  });
-  startHungerTimer();
-}
-void startHungerTimer() {
-  _hungerTimer?.cancel();
-  _hungerTimer = Timer.periodic(
-    const Duration(seconds: 30),
-    (_) {
-      if (!mounted || outcome != 'playing') return;
+    _cancelTimers();
+    setState(() {
+      happiness = 50;
+      hunger = 50;
+      outcome = 'playing';
+    });
+    startHungerTimer();
+  }
+
+  void startHungerTimer() {
+    _hungerTimer?.cancel();
+    _hungerTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (!mounted || outcome != 'playing') {
+        timer.cancel();
+        return;
+      }
       setState(() {
         final nextHunger = hunger + 5;
         if (nextHunger > 100) {
           happiness = (happiness - 20).clamp(0, 100).toInt();
         }
         hunger = nextHunger.clamp(0, 100).toInt();
+        _checkOutcome();
       });
-    },
-  );
-}
-@override
-void initState() {
-  super.initState();
-  startHungerTimer();
-}
-@override
-void dispose() {
-  _hungerTimer?.cancel();
-  super.dispose();
-}
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startHungerTimer();
+  }
+
+  @override
+  void dispose() {
+    _cancelTimers();
+    super.dispose();
+  }
 }
