@@ -4,17 +4,16 @@ class DetailScreen extends StatefulWidget {
   const DetailScreen({super.key});
 
   @override
-  State<DetailScreen> createState() =>
-      _DetailScreenState();
+  State<DetailScreen> createState() => _DetailScreenState();
 }
 
-class _DetailScreenState
-    extends State<DetailScreen> {
-
+class _DetailScreenState extends State<DetailScreen> {
   int progress = 0;
 
   bool missionStarted = false;
   bool missionCompleted = false;
+
+  List<int> progressLogs = [];
 
   @override
   Widget build(BuildContext context) {
@@ -22,26 +21,28 @@ class _DetailScreenState
       appBar: AppBar(
         title: const Text('Mission Details'),
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
           children: [
 
             Text(
               missionCompleted
-                  ? 'Mission Complete'
-                  : 'Mission Active',
-              style:
-              const TextStyle(fontSize: 22),
+                  ? '✅ Mission Complete'
+                  : '⌛ In Progress',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
             const SizedBox(height: 20),
 
             Text(
-              'Progress: $progress',
-              style:
-              const TextStyle(fontSize: 24),
+              'Total Progress: $progress',
+              style: const TextStyle(
+                fontSize: 20,
+              ),
             ),
 
             const SizedBox(height: 20),
@@ -52,105 +53,140 @@ class _DetailScreenState
                   missionStarted = true;
                 });
               },
-              child:
-              const Text('Start Mission'),
+              child: const Text(
+                'Start Mission',
+              ),
             ),
 
-          ElevatedButton(
-            onPressed: () {
-              final progressController =
-              TextEditingController();
-
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Add Progress'),
-
-                    content: TextField(
-                      controller: progressController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Units Completed',
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Cancel'),
-                      ),
-
-                      TextButton(
-                        onPressed: () {
-
-                          int units =
-                              int.tryParse(
-                                progressController.text,
-                              ) ??
-                                  0;
-
-                          setState(() {
-                            progress += units;
-                          });
-
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            child: const Text('Add Progress'),
-          ),
+            const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: () {
+                final controller =
+                TextEditingController();
 
                 showDialog(
                   context: context,
-                  builder: (context) =>
-                      AlertDialog(
-                        title: const Text(
-                            'Finish Mission?'),
-                        content: const Text(
-                          'Are you sure you want to finish this mission?',
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text(
+                        'Add Progress',
+                      ),
+
+                      content: TextField(
+                        controller: controller,
+                        keyboardType:
+                        TextInputType.number,
+                        decoration:
+                        const InputDecoration(
+                          labelText:
+                          'Units Completed',
                         ),
-                        actions: [
+                      ),
 
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(
-                                  context);
-                            },
-                            child:
-                            const Text('Cancel'),
+                      actions: [
+
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(
+                                context);
+                          },
+                          child: const Text(
+                            'Cancel',
                           ),
+                        ),
 
-                          TextButton(
-                            onPressed: () {
+                        TextButton(
+                          onPressed: () {
 
-                              setState(() {
+                            int units =
+                                int.tryParse(
+                                  controller
+                                      .text,
+                                ) ??
+                                    0;
+
+                            setState(() {
+                              progress += units;
+
+                              progressLogs
+                                  .add(units);
+
+                              if (progress >= 5) {
                                 missionCompleted =
                                 true;
-                              });
+                              }
+                            });
 
-                              Navigator.pop(
-                                  context);
-                            },
-                            child:
-                            const Text('Finish'),
+                            Navigator.pop(
+                                context);
+                          },
+                          child: const Text(
+                            'Save',
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
-              child:
-              const Text('Finish Mission'),
+              child: const Text(
+                'Add Progress',
+              ),
             ),
+
+            const SizedBox(height: 10),
+
+            ElevatedButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text(
+                        'Finish Mission?',
+                      ),
+                      content: const Text(
+                        'Are you sure you want to finish this mission?',
+                      ),
+                      actions: [
+
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(
+                                context);
+                          },
+                          child: const Text(
+                            'Cancel',
+                          ),
+                        ),
+
+                        TextButton(
+                          onPressed: () {
+
+                            setState(() {
+                              missionCompleted =
+                              true;
+                            });
+
+                            Navigator.pop(
+                                context);
+                          },
+                          child: const Text(
+                            'Finish',
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: const Text(
+                'Finish Mission',
+              ),
+            ),
+
+            const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: () {
@@ -158,10 +194,45 @@ class _DetailScreenState
                   progress = 0;
                   missionStarted = false;
                   missionCompleted = false;
+                  progressLogs.clear();
                 });
               },
-              child:
-              const Text('Reset Mission'),
+              child: const Text(
+                'Reset Mission',
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            const Text(
+              'Progress History',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: ListView.builder(
+                itemCount:
+                progressLogs.length,
+                itemBuilder:
+                    (context, index) {
+
+                  return Card(
+                    child: ListTile(
+                      title: Text(
+                        'Progress Log #${index + 1}',
+                      ),
+                      subtitle: Text(
+                        '${progressLogs[index]} units completed',
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),

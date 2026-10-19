@@ -1,13 +1,15 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/challenge.dart';
 import 'challenge_form_screen.dart';
+import 'detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<DashboardScreen> createState() =>
+      _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
@@ -15,7 +17,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ChallengeFormScreen(),
+        builder: (context) =>
+            const ChallengeFormScreen(),
       ),
     );
 
@@ -29,7 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('Campus Challenges'),
       ),
       body: FutureBuilder<List<Challenge>>(
-        future: DatabaseHelper.instance.getAllChallenges(),
+        future:
+            DatabaseHelper.instance.getAllChallenges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState ==
               ConnectionState.waiting) {
@@ -46,33 +50,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           }
 
-          final challenges = snapshot.data ?? [];
+          final challenges =
+              snapshot.data ?? [];
 
           if (challenges.isEmpty) {
             return const Center(
-              child: Text('No challenges yet'),
+              child: Text(
+                'No challenges yet',
+              ),
             );
           }
 
           return ListView.builder(
             itemCount: challenges.length,
             itemBuilder: (context, index) {
-              final challenge = challenges[index];
+              final challenge =
+                  challenges[index];
 
               return Card(
-                margin: const EdgeInsets.all(8),
+                margin:
+                    const EdgeInsets.all(8),
                 child: ListTile(
-                  title: Text(challenge.title),
+                  title: Text(
+                    challenge.title,
+                  ),
                   subtitle: Text(
                     '${challenge.category} • Target: ${challenge.targetUnits}',
                   ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const DetailScreen(),
+                      ),
+                    );
+                  },
                 ),
               );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton:
+          FloatingActionButton(
         onPressed: _openChallengeForm,
         child: const Icon(Icons.add),
       ),

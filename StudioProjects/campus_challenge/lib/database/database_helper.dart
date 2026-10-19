@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -198,19 +200,18 @@ class DatabaseHelper {
 
     return total;
   }
-
   Future<bool> isChallengeComplete(
-      Challenge challenge) async {
+    Challenge challenge) async {
 
-    final total =
-    await getTotalProgress(
-      challenge.id!,
-        final total =
-        await DatabaseHelper.instance
-        .getTotalProgress(1);
-    );
-
-    return total >=
-        challenge.targetUnits;
+  if (challenge.id == null) {
+    return false;
   }
+
+  final total =
+      await getTotalProgress(
+    challenge.id!,
+  );
+
+  return total >=
+      challenge.targetUnits;
 }
