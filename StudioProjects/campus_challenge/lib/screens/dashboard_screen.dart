@@ -1,4 +1,5 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../widgets/challenge_card.dart';
 import '../database/database_helper.dart';
 import '../models/challenge.dart';
 import 'challenge_form_screen.dart';
@@ -18,7 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context,
       MaterialPageRoute(
         builder: (context) =>
-            const ChallengeFormScreen(),
+        const ChallengeFormScreen(),
       ),
     );
 
@@ -33,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: FutureBuilder<List<Challenge>>(
         future:
-            DatabaseHelper.instance.getAllChallenges(),
+        DatabaseHelper.instance.getAllChallenges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState ==
               ConnectionState.waiting) {
@@ -65,11 +66,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             itemCount: challenges.length,
             itemBuilder: (context, index) {
               final challenge =
-                  challenges[index];
+              challenges[index];
 
               return Card(
                 margin:
-                    const EdgeInsets.all(8),
+                const EdgeInsets.all(8),
                 child: ListTile(
                   title: Text(
                     challenge.title,
@@ -85,7 +86,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            const DetailScreen(),
+                            DetailScreen(
+                              challenge:
+                              challenge,
+                            ),
                       ),
                     );
                   },
@@ -96,9 +100,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       floatingActionButton:
-          FloatingActionButton(
+      FloatingActionButton(
         onPressed: _openChallengeForm,
-        child: const Icon(Icons.add),
+        child: const Icon(
+          Icons.add,
+        ),
       ),
     );
   }

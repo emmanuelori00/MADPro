@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../database/database_helper.dart';
+import '../models/challenge.dart';
+import '../models/progress_log.dart';
+
 class DetailScreen extends StatefulWidget {
-  const DetailScreen({super.key});
+  final Challenge challenge;
+
+  const DetailScreen({
+    super.key,
+    required this.challenge,
+  });
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -13,19 +22,60 @@ class _DetailScreenState extends State<DetailScreen> {
   bool missionStarted = false;
   bool missionCompleted = false;
 
-  List<int> progressLogs = [];
+  List<ProgressLog> progressLogs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadProgressLogs();
+  }
+
+  Future<void> loadProgressLogs() async {
+    if (widget.challenge.id == null) return;
+
+    final logs =
+        await DatabaseHelper.instance.getProgressLogs(
+      widget.challenge.id!,
+    );
+
+    int total = 0;
+
+    for (var log in logs) {
+      total += log.units;
+    }
+
+    setState(() {
+      progressLogs = logs;
+      progress = total;
+
+      missionCompleted =
+          progress >= widget.challenge.targetUnits;
+    });
+  }
+
+  Future<void> addProgress(int units) async {
+    await DatabaseHelper.instance.insertProgressLog(
+      ProgressLog(
+        challengeId: widget.challenge.id!,
+        units: units,
+        note: 'Manual Entry',
+        loggedAt: DateTime.now().toString(),
+      ).toMap(),
+    );
+
+    await loadProgressLogs();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mission Details'),
+        title: Text(widget.challenge.title),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-
             Text(
               missionCompleted
                   ? '✅ Mission Complete'
@@ -37,6 +87,22 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
 
             const SizedBox(height: 20),
+
+            Text(
+              'Category: ${widget.challenge.category}',
+              style: const TextStyle(
+                fontSize: 18,
+              ),
+            ),
+
+            Text(
+              'Target: ${widget.challenge.targetUnits}',
+              style: const TextStyle(
+                fontSize: 18,
+              ),
+            ),
+
+            const SizedBox(height: 10),
 
             Text(
               'Total Progress: $progress',
@@ -63,7 +129,7 @@ class _DetailScreenState extends State<DetailScreen> {
             ElevatedButton(
               onPressed: () {
                 final controller =
-                TextEditingController();
+                    TextEditingController();
 
                 showDialog(
                   context: context,
@@ -72,58 +138,44 @@ class _DetailScreenState extends State<DetailScreen> {
                       title: const Text(
                         'Add Progress',
                       ),
-
                       content: TextField(
                         controller: controller,
                         keyboardType:
-                        TextInputType.number,
+                            TextInputType.number,
                         decoration:
-                        const InputDecoration(
+                            const InputDecoration(
                           labelText:
-                          'Units Completed',
+                              'Units Completed',
                         ),
                       ),
-
                       actions: [
-
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(
-                                context);
+                            Navigator.pop(context);
                           },
-                          child: const Text(
-                            'Cancel',
-                          ),
+                          child:
+                              const Text('Cancel'),
                         ),
-
                         TextButton(
-                          onPressed: () {
-
-                            int units =
+                          onPressed: () async {
+                            final units =
                                 int.tryParse(
-                                  controller
-                                      .text,
-                                ) ??
+                                      controller.text,
+                                    ) ??
                                     0;
 
-                            setState(() {
-                              progress += units;
+                            await addProgress(
+                              units,
+                            );
 
-                              progressLogs
-                                  .add(units);
-
-                              if (progress >= 5) {
-                                missionCompleted =
-                                true;
-                              }
-                            });
-
-                            Navigator.pop(
-                                context);
+                            if (mounted) {
+                              Navigator.pop(
+                                context,
+                              );
+                            }
                           },
-                          child: const Text(
-                            'Save',
-                          ),
+                          child:
+                              const Text('Save'),
                         ),
                       ],
                     );
@@ -150,31 +202,28 @@ class _DetailScreenState extends State<DetailScreen> {
                         'Are you sure you want to finish this mission?',
                       ),
                       actions: [
-
                         TextButton(
                           onPressed: () {
                             Navigator.pop(
-                                context);
+                              context,
+                            );
                           },
-                          child: const Text(
-                            'Cancel',
-                          ),
+                          child:
+                              const Text('Cancel'),
                         ),
-
                         TextButton(
                           onPressed: () {
-
                             setState(() {
                               missionCompleted =
-                              true;
+                                  true;
                             });
 
                             Navigator.pop(
-                                context);
+                              context,
+                            );
                           },
-                          child: const Text(
-                            'Finish',
-                          ),
+                          child:
+                              const Text('Finish'),
                         ),
                       ],
                     );
@@ -215,24 +264,32 @@ class _DetailScreenState extends State<DetailScreen> {
             const SizedBox(height: 10),
 
             Expanded(
-              child: ListView.builder(
-                itemCount:
-                progressLogs.length,
-                itemBuilder:
-                    (context, index) {
+              child: progressLogs.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No progress logs yet',
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount:
+                          progressLogs.length,
+                      itemBuilder:
+                          (context, index) {
+                        final log =
+                            progressLogs[index];
 
-                  return Card(
-                    child: ListTile(
-                      title: Text(
-                        'Progress Log #${index + 1}',
-                      ),
-                      subtitle: Text(
-                        '${progressLogs[index]} units completed',
-                      ),
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              '${log.units} units completed',
+                            ),
+                            subtitle: Text(
+                              log.note,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),

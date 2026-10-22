@@ -1,10 +1,9 @@
-import 'dart:ffi';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/challenge.dart';
 import '../models/progress_log.dart';
+import '../models/workout_plan.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance =
@@ -15,6 +14,10 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   Future<Database> get database async {
+    if (_database != null) {
+      return _database!;
+    }
+
     _database =
     await _initDB('campus_challenge.db');
 
@@ -22,24 +25,25 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(
-      String filePath) async {
-
+      String filePath,
+      ) async {
     final dbPath =
     await getDatabasesPath();
 
     final path =
     join(dbPath, filePath);
+
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
     );
   }
 
-  Future _createDB(
+  Future<void> _createDB(
       Database db,
-      int version) async {
-
+      int version,
+      ) async {
     await db.execute('''
       CREATE TABLE Challenge(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +66,16 @@ class DatabaseHelper {
         ON DELETE CASCADE
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE workout_plans(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        goal TEXT,
+        createdAt TEXT NOT NULL
+      )
+    ''');
   }
 
   // ==========================
@@ -69,9 +83,9 @@ class DatabaseHelper {
   // ==========================
 
   Future<int> insertChallenge(
-      Map<String, dynamic> challenge) async {
-
-    final db = await instance.database;
+      Map<String, dynamic> challenge,
+      ) async {
+    final db = await database;
 
     return await db.insert(
       'Challenge',
@@ -81,8 +95,7 @@ class DatabaseHelper {
 
   Future<List<Challenge>>
   getAllChallenges() async {
-
-    final db = await instance.database;
+    final db = await database;
 
     final result =
     await db.query('Challenge');
@@ -96,9 +109,9 @@ class DatabaseHelper {
   }
 
   Future<int> updateChallenge(
-      Map<String, dynamic> challenge) async {
-
-    final db = await instance.database;
+      Map<String, dynamic> challenge,
+      ) async {
+    final db = await database;
 
     return await db.update(
       'Challenge',
@@ -109,9 +122,9 @@ class DatabaseHelper {
   }
 
   Future<int> deleteChallenge(
-      int id) async {
-
-    final db = await instance.database;
+      int id,
+      ) async {
+    final db = await database;
 
     return await db.delete(
       'Challenge',
@@ -125,9 +138,9 @@ class DatabaseHelper {
   // ==========================
 
   Future<int> insertProgressLog(
-      Map<String, dynamic> log) async {
-
-    final db = await instance.database;
+      Map<String, dynamic> log,
+      ) async {
+    final db = await database;
 
     return await db.insert(
       'ProgressLog',
@@ -137,9 +150,9 @@ class DatabaseHelper {
 
   Future<List<ProgressLog>>
   getProgressLogs(
-      int challengeId) async {
-
-    final db = await instance.database;
+      int challengeId,
+      ) async {
+    final db = await database;
 
     final result = await db.query(
       'ProgressLog',
@@ -156,9 +169,9 @@ class DatabaseHelper {
   }
 
   Future<int> updateProgressLog(
-      Map<String, dynamic> log) async {
-
-    final db = await instance.database;
+      Map<String, dynamic> log,
+      ) async {
+    final db = await database;
 
     return await db.update(
       'ProgressLog',
@@ -169,12 +182,88 @@ class DatabaseHelper {
   }
 
   Future<int> deleteProgressLog(
-      int id) async {
-
-    final db = await instance.database;
+      int id,
+      ) async {
+    final db = await database;
 
     return await db.delete(
       'ProgressLog',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // ==========================
+  // WORKOUT PLAN CRUD
+  // ==========================
+
+  Future<int> insertWorkoutPlan(
+      WorkoutPlan plan,
+      ) async {
+    final db = await database;
+
+    return await db.insert(
+      'workout_plans',
+      plan.toMap(),
+    );
+  }
+
+  Future<List<WorkoutPlan>>
+  getWorkoutPlans() async {
+    final db = await database;
+
+    final maps =
+    await db.query('workout_plans');
+
+    return maps
+        .map(
+          (map) =>
+          WorkoutPlan.fromMap(map),
+    )
+        .toList();
+  }
+
+  Future<WorkoutPlan?>
+  getWorkoutPlan(
+      int id,
+      ) async {
+    final db = await database;
+
+    final maps = await db.query(
+      'workout_plans',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (maps.isNotEmpty) {
+      return WorkoutPlan.fromMap(
+        maps.first,
+      );
+    }
+
+    return null;
+  }
+
+  Future<int> updateWorkoutPlan(
+      WorkoutPlan plan,
+      ) async {
+    final db = await database;
+
+    return await db.update(
+      'workout_plans',
+      plan.toMap(),
+      where: 'id = ?',
+      whereArgs: [plan.id],
+    );
+  }
+
+  Future<int> deleteWorkoutPlan(
+      int id,
+      ) async {
+    final db = await database;
+
+    return await db.delete(
+      'workout_plans',
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -185,8 +274,8 @@ class DatabaseHelper {
   // ==========================
 
   Future<int> getTotalProgress(
-      int challengeId) async {
-
+      int challengeId,
+      ) async {
     final logs =
     await getProgressLogs(
       challengeId,
@@ -200,18 +289,21 @@ class DatabaseHelper {
 
     return total;
   }
-  Future<bool> isChallengeComplete(
-    Challenge challenge) async {
 
-  if (challenge.id == null) {
-    return false;
+  Future<bool>
+  isChallengeComplete(
+      Challenge challenge,
+      ) async {
+    if (challenge.id == null) {
+      return false;
+    }
+
+    final total =
+    await getTotalProgress(
+      challenge.id!,
+    );
+
+    return total >=
+        challenge.targetUnits;
   }
-
-  final total =
-      await getTotalProgress(
-    challenge.id!,
-  );
-
-  return total >=
-      challenge.targetUnits;
 }
